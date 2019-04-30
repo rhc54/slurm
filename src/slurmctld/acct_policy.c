@@ -3712,6 +3712,63 @@ extern bool acct_policy_job_runnable_post_select(
 				assoc_ptr->usage->grp_used_tres_run_secs[i] /
 				60;
 
+			/* Why are we modifying the current usage?
+			 * See notes.
+			 * If usage is 4mins and you request a qos with a usage
+			 * factor of 2 then the current usage is bumped to 8
+			 * mins.
+			 *
+			 * I think the reason for this is if the usagefactor is
+			 * 0 and the current usage exceeds the limit, then the
+			 * job wouldn't start because the usage is already
+			 * greater than the limit.
+			 *
+			 * What if usagefactor was .5?
+			 *
+			 * curr_usage = 4
+			 * limit = 10
+			 * request 4 mins
+			 *
+			 * How many more jobs (4min jobs) can I fit in this account?
+			 * I would expect 3 (3 jobs * 2 mins  == 6 mins)
+			 * 2
+			 * 2
+			 * 2
+			 *
+			 * mod_usage = 2
+			 * mod_req = 2 mins
+			 *
+			 *
+			 * curr_usage = 8
+			 * limit = 10
+			 * request 4 mins
+			 *
+			 *
+			 * mod_usage = 4
+			 * mod_req = 2 mins
+			 *
+			 * job runs
+			 *
+			 * curr_usage = 10
+			 * limit = 10
+			 * request 4 mins
+			 *
+			 *
+			 * mod_usage = 5
+			 * mod_req = 2 mins
+			 *
+			 * job runs, I wouldn't expect it to run.
+			 *
+			 * If you're usage is at the limit then a .5 will let
+			 * you go over the limit because it halfs the current
+			 * usage.
+			 *
+			 * *****************************
+			 * Really 0 is the just case to handle, for modifying
+			 * the current_usage.
+			 * *****************************
+			 *
+			 * */
 			/*
 			 * Clear usage if factor is 0 so that jobs can run.
 			 * Otherwise multiplying can cause more jobs to be run
