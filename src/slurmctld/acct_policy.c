@@ -2094,9 +2094,15 @@ static int _qos_job_runnable_post_select(struct job_record *job_ptr,
 		tres_usage_mins[i] =
 			(uint64_t)(qos_ptr->usage->usage_tres_raw[i] / 60.0);
 
-		/* usage factor for GrpTRESRunMins*/
-		tres_run_mins[i] *= usage_factor;
-		tres_usage_mins[i] *= usage_factor;
+		/*
+		 * Clear usage if factor is 0 so that jobs can run. Otherwise
+		 * multiplying can cause more jobs to be run than the limit
+		 * allows (e.g. usagefactor=.5).
+		 */
+		if (usage_factor == 0.0) {
+			tres_run_mins[i] *= usage_factor;
+			tres_usage_mins[i] *= usage_factor;
+		}
 	}
 
 	used_limits_a =	acct_policy_get_acct_used_limits(
@@ -3705,9 +3711,16 @@ extern bool acct_policy_job_runnable_post_select(
 			tres_run_mins[i] =
 				assoc_ptr->usage->grp_used_tres_run_secs[i] /
 				60;
-			/* usage factor for GrpTRESRunMins*/
-			tres_run_mins[i] *= usage_factor;
-			tres_usage_mins[i] *= usage_factor;
+
+			/*
+			 * Clear usage if factor is 0 so that jobs can run.
+			 * Otherwise multiplying can cause more jobs to be run
+			 * than the limit allows (e.g. usagefactor=.5).
+			 */
+			if (usage_factor == 0.0) {
+				tres_usage_mins[i] *= usage_factor;
+				tres_run_mins[i] *= usage_factor;
+			}
 		}
 
 #if _DEBUG
